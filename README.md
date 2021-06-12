@@ -6,26 +6,28 @@
  
 # Usage:
  ```
- zipeb.exe -i <archive to be extracted> -o <output directory to extract to> -b <a path to create an archive which contains all files before overwritten>
+ zipeb.exe -i <archive to be extracted> -o <output directory to extract to> -b <a file path to create an archive which contains all files before overwritten>
  ```
  Explain:
- * `zipeb.exe` is the filename of the executable.
- * `-i <archive to be extracted>`
+ * `zipeb.exe` is the filename of the executable. If you rename the executable file, please use that name instead.
+ * [Required] `-i <archive to be extracted>`
    * Relative or full path to the archive file that you want to extract/uncompress.
    * E.g: (Notice the double quote being used when the path has blank space(s), and the required blank space after the `-i`)
      * `-i my_data\file\patch.zip`
      * `-i "my data\files\patch.zip"`
      * `-i C:\data\files\patch.zip`
      * `-i "C:\data files\patch.zip"`
- * `-o <output directory to extract to>`
+ * [Required] `-o <output directory to extract to>`
    * Relative or full path to the folder where the archive will be extracted to.
    * E.g: (Notice the double quote being used when the path has blank space(s), and the required blank space after the `-o`)
      * `-o my_data\patched`
      * `-o "my data\patched"`
      * `-o C:\data\patched`
      * `-o "C:\data files patched"`
- * `-b <a path to create an archive which contains all files before overwritten>`
+ * [Optional] `-b <a file path to create an archive which contains all files before overwritten>`
    * Relative or full path to the folder where the archive will be extracted to.
+   * Regardless of the file extension from the path, the backup archive will always be a ZIP archive. And the path should point to a file, not a directory or folder.
+   * In case you omit this option, no backup archive will be created, all files will be extracted (and overwritten without prompts if it exists).
    * E.g: (Notice the double quote being used when the path has blank space(s), and the required blank space after the `-b`)
      * `-b my_data\backup\original.zip`
      * `-b "my data\backup\original.zip"`
