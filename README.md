@@ -36,5 +36,8 @@
      
  Full example:
  * `zipeb.exe -i enpatch.zip -o bin\data -b original_files.zip`
+   * Extract `enpatch.zip` to `bin\data`, all the backup files before overwriting will be in the archive `original_files.zip`.
  * `zipeb.exe -i patch.zip -o "game bin\data" -b "original files.zip"`
+   * Extract `patch.zip` to `game bin\data`, all the backup files before overwriting will be in the archive `original files.zip`.
  * `zipeb.exe -i "D:\my games\patch english.zip" -o "E:\game bin\data" -b "D:\my games\original files.zip"`
+   * Extract `patch english.zip` (in directory `D:\my games`) to `E:\game bin\data`, all the backup files before overwriting will be in the archive `original files.zip` (the backup zip will be in the directory `D:\my games`).
