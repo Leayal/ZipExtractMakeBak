@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net5.0;net472;netcoreapp3.1</TargetFrameworks>
+    <AssemblyName>ZipEB</AssemblyName>
+    <RootNamespace>ZipExtractMakeBak</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+	  <None Remove="SharpCompress.dll" />
+	  <EmbeddedResource Include="SharpCompress.dll" />
+
+	  <None Remove="System.Runtime.CompilerServices.Unsafe.dll" />
+	  <EmbeddedResource Include="System.Runtime.CompilerServices.Unsafe.dll" />
+
+	  <None Remove="System.Text.Encoding.CodePages.dll" />
+	  <EmbeddedResource Include="System.Text.Encoding.CodePages.dll" />
+
+	  <None Remove="System.Buffers.dll" />
+	  <EmbeddedResource Include="System.Buffers.dll" />
+
+	  <None Remove="System.Memory.dll" />
+	  <EmbeddedResource Include="System.Memory.dll" />
+
+	  <None Remove="System.Numerics.Vectors.dll" />
+	  <EmbeddedResource Include="System.Numerics.Vectors.dll" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="SharpCompress" Version="0.28.3" />
+	</ItemGroup>
+
+</Project>
