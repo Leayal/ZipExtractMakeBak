@@ -4,6 +4,7 @@ using SharpCompress.Readers;
 using SharpCompress.Common;
 using System.IO;
 using System.Collections.Generic;
+using SharpCompress.Writers;
 
 namespace ZipExtractMakeBak
 {
@@ -21,12 +22,14 @@ namespace ZipExtractMakeBak
             Console.WriteLine("Usage switches:");
             Console.WriteLine("-i [input archive (7z, zip or RAR)]");
             Console.WriteLine("-o [output path or directory]");
-            Console.WriteLine("-b [backup zip]");
+            Console.WriteLine("-b [backup destination path]");
+            Console.WriteLine("-nozip");
         }
 
         public void Main(string[] args)
         {
-            string inputZip = null, outputDirectory = null, backupZip = null;
+            string inputZip = null, outputDirectory = null, backupDst = null;
+            bool isZip = true;
 
             if (args == null || args.Length == 0)
             {
@@ -37,17 +40,22 @@ namespace ZipExtractMakeBak
             for (int i = 0; i < args.Length; i++)
             {
                 var arg = args[i];
-                if (string.Equals(arg, "-i", StringComparison.InvariantCultureIgnoreCase) || string.Equals(arg, "--input", StringComparison.InvariantCultureIgnoreCase))
+                if (string.Equals(arg, "-i", StringComparison.OrdinalIgnoreCase) || string.Equals(arg, "--input", StringComparison.OrdinalIgnoreCase))
                 {
                     inputZip = args[++i];
                 }
-                else if (string.Equals(arg, "-o", StringComparison.InvariantCultureIgnoreCase) || string.Equals(arg, "--output-directory", StringComparison.InvariantCultureIgnoreCase))
+                else if (string.Equals(arg, "-o", StringComparison.OrdinalIgnoreCase) || string.Equals(arg, "--output-directory", StringComparison.OrdinalIgnoreCase))
                 {
                     outputDirectory = args[++i];
                 }
-                else if (string.Equals(arg, "-b", StringComparison.InvariantCultureIgnoreCase) || string.Equals(arg, "-bak", StringComparison.InvariantCultureIgnoreCase) || string.Equals(arg, "--backup", StringComparison.InvariantCultureIgnoreCase))
+                else if (string.Equals(arg, "-b", StringComparison.OrdinalIgnoreCase) || string.Equals(arg, "-bak", StringComparison.OrdinalIgnoreCase) || string.Equals(arg, "--backup", StringComparison.OrdinalIgnoreCase))
                 {
-                    backupZip = args[++i];
+                    backupDst = args[++i];
+                    isZip = !Directory.Exists(backupDst);
+                }
+                else if (string.Equals(arg, "-nozip", StringComparison.OrdinalIgnoreCase))
+                {
+                    isZip = false;
                 }
             }
 
@@ -60,7 +68,7 @@ namespace ZipExtractMakeBak
             Console.WriteLine($"Input archive file: {inputZip}");
             Console.WriteLine($"Destination directory: {outputDirectory}");
 
-            if (string.IsNullOrWhiteSpace(backupZip))
+            if (string.IsNullOrWhiteSpace(backupDst))
             {
                 Console.Write("Extract without making backup file(s)? [y/N]");
                 if (Console.ReadKey().Key != ConsoleKey.Y)
@@ -72,15 +80,22 @@ namespace ZipExtractMakeBak
             Console.CancelKeyPress += Console_CancelKeyPress;
             Dictionary<string, string> extracted = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
 
-            ZipWriter writer = null;
+            IBackupWriter writer = null;
             FileStream fs_bak = null;
             try
             {
-                if (!string.IsNullOrWhiteSpace(backupZip))
+                if (!string.IsNullOrWhiteSpace(backupDst))
                 {
-                    backupZip = Path.GetFullPath(backupZip);
-                    fs_bak = File.Create(backupZip);
-                    writer = new ZipWriter(fs_bak, new ZipWriterOptions(CompressionType.Deflate) { DeflateCompressionLevel = SharpCompress.Compressors.Deflate.CompressionLevel.BestCompression, LeaveStreamOpen = false, ArchiveComment = "Backup" });
+                    backupDst = Path.GetFullPath(backupDst);
+                    if (isZip)
+                    {
+                        fs_bak = File.Create(backupDst);
+                        writer = new ZipBackupWriter(fs_bak, new ZipWriterOptions(CompressionType.Deflate) { DeflateCompressionLevel = SharpCompress.Compressors.Deflate.CompressionLevel.BestCompression, LeaveStreamOpen = false, ArchiveComment = "Backup" });
+                    }
+                    else
+                    {
+                        writer = new FolderBackupWriter(backupDst);
+                    }
                 }
 
                 using (var archive = OpenArchive(inputZip))
@@ -101,10 +116,7 @@ namespace ZipExtractMakeBak
                         if (writer != null && File.Exists(fullpath_ofFile))
                         {
                             Console.WriteLine($"Backup file: {reader.Entry.Key}");
-                            using (var fs_orig = File.OpenRead(fullpath_ofFile))
-                            {
-                                writer.Write(reader.Entry.Key, fs_orig, File.GetLastWriteTime(fs_orig.Name));
-                            }
+                            writer.WriteBackup(reader.Entry.Key, fullpath_ofFile);
                         }
                         if (cancel)
                         {
@@ -112,6 +124,7 @@ namespace ZipExtractMakeBak
                         }
                         Console.WriteLine($"Extract patching file: {reader.Entry.Key}");
 
+                        Directory.CreateDirectory(Path.GetDirectoryName(fullpath_ofFile));
                         reader.WriteEntryTo(fullpath_ofFile + ".patch");
                         extracted.Add(fullpath_ofFile, fullpath_ofFile + ".patch");
                     }
@@ -142,13 +155,16 @@ namespace ZipExtractMakeBak
                 }
                 else
                 {
-                    Console.WriteLine($"All patch files applied. Backup saved to: {backupZip}");
+                    Console.WriteLine($"All patch files applied. Backup saved to: {backupDst}");
                 }
             }
             else
             {
                 Console.WriteLine($"Cancelled. Delete all extracted patch files and unused backup files.");
-                File.Delete(backupZip);
+                if (isZip)
+                {
+                    File.Delete(backupDst);
+                }
                 foreach (var item in extracted)
                 {
                     File.Delete(item.Value);

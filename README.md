@@ -25,14 +25,16 @@
      * `-o C:\data\patched`
      * `-o "C:\data files patched"`
  * [Optional] `-b <a file path to create an archive which contains all files before overwritten>`
-   * Relative or full path to the folder where the archive will be extracted to.
-   * Regardless of the file extension from the path, the backup archive will always be a ZIP archive. And the path should point to a file, not a directory or folder.
+   * Relative or full path to the folder where the backup will be created.
+   * Regardless of the file extension from the path, the backup archive will always be a ZIP archive.
    * In case you omit this option, no backup archive will be created, all files will be extracted (and overwritten without prompts if it exists).
    * E.g: (Notice the double quote being used when the path has blank space(s), and the required blank space after the `-b`)
      * `-b my_data\backup\original.zip`
      * `-b "my data\backup\original.zip"`
      * `-b C:\data\backup\original.zip`
      * `-b "C:\data files original.zip"`
+ * [Optional] `-nozip`
+   * Indicates that you want the backup files to be created without archive. Meaning all files will be loose files in the destination directory.
      
  Full example:
  * `zipeb.exe -i enpatch.zip -o bin\data -b original_files.zip`
@@ -41,3 +43,5 @@
    * Extract `patch.zip` to `game bin\data`, all the backup files before overwriting will be in the archive `original files.zip`.
  * `zipeb.exe -i "D:\my games\patch english.zip" -o "E:\game bin\data" -b "D:\my games\original files.zip"`
    * Extract `patch english.zip` (in directory `D:\my games`) to `E:\game bin\data`, all the backup files before overwriting will be in the archive `original files.zip` (the backup zip will be in the directory `D:\my games`).
+ * `zipeb.exe -i "D:\my games\patch english.zip" -o "E:\game bin\data" -b "D:\my games\backup" -nozip`
+   * Extract `patch english.zip` (in directory `D:\my games`) to `E:\game bin\data`, all the backup files before overwriting will be in the folder `backup` (the backup folder will be in the directory `D:\my games`).
