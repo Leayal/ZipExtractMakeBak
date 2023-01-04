@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net6.0;net472</TargetFrameworks>
+    <TargetFrameworks>net7.0;net472</TargetFrameworks>
     <AssemblyName>ZipEB</AssemblyName>
     <RootNamespace>ZipExtractMakeBak</RootNamespace>
     <Authors>Dramiel Leayal</Authors>
@@ -11,23 +11,12 @@
     <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
     <ErrorReport>none</ErrorReport>
     <Version>1.1.0</Version>
+	<DebugType>none</DebugType>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net6.0|AnyCPU'">
-    <DebugType>none</DebugType>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net6.0|AnyCPU'">
-    <DebugType>none</DebugType>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net472|AnyCPU'">
-    <DebugType>none</DebugType>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net472|AnyCPU'">
-    <DebugType>none</DebugType>
-  </PropertyGroup>
+	<PropertyGroup Condition="'$(TargetFramework)'=='net7.0'">
+		<PublishAot>true</PublishAot>
+	</PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
 	  <None Remove="SharpCompress.dll" />
@@ -50,7 +39,7 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="SharpCompress" Version="0.31.0" />
+		<PackageReference Include="SharpCompress" Version="0.32.2" />
 	</ItemGroup>
 
 </Project>
