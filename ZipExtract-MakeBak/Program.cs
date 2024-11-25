@@ -19,6 +19,11 @@ namespace ZipExtractMakeBak
 #if NETFRAMEWORK
             AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
 #endif
+
+#if DEBUG
+            var worker = new Worker();
+            worker.Main(args);
+#else
             try
             {
                 var worker = new Worker();
@@ -33,6 +38,7 @@ namespace ZipExtractMakeBak
             {
                 AppDomain.CurrentDomain.AssemblyResolve -= CurrentDomain_AssemblyResolve;
             }
+#endif
 #endif
         }
 

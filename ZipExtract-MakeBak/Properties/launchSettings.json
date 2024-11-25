@@ -2,8 +2,8 @@
   "profiles": {
     "ZipExtract-MakeBak": {
       "commandName": "Project",
-      "commandLineArgs": "-i net472.zip -o output -b aaaa -nozip",
-      "workingDirectory": "E:\\All Content\\VB_Project\\visual studio 2019\\ZipExtract-MakeBak\\ZipExtract-MakeBak\\bin\\Release\\net472\\publish"
+      "commandLineArgs": "-i \"fla_polldance_lewd_v2\" -i \"fla_reachingout_oppai_fukkireta_extra\" -o \"test\" -b \"bakTest\" -nozip",
+      "workingDirectory": "E:\\Downloads\\PSO2\\mod files\\lobby-action\\_active"
     }
   }
 }

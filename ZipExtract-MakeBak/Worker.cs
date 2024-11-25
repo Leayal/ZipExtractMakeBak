@@ -5,6 +5,7 @@ using SharpCompress.Common;
 using System.IO;
 using System.Collections.Generic;
 using SharpCompress.Writers;
+using System.Text;
 
 namespace ZipExtractMakeBak
 {
@@ -20,16 +21,29 @@ namespace ZipExtractMakeBak
         void ShowHelp()
         {
             Console.WriteLine("Usage switches:");
-            Console.WriteLine("-i [input archive (7z, zip or RAR)]");
-            Console.WriteLine("-o [output path or directory]");
-            Console.WriteLine("-b [backup destination path]");
-            Console.WriteLine("-nozip");
+            Console.WriteLine(" -i [input archive (7z, zip or RAR) or a directory path] (Required)");
+            Console.WriteLine(" -o [output path or directory] (Required)");
+            Console.WriteLine(" -b [backup destination path] (Optional)");
+#if !NETFRAMEWORK
+            Console.WriteLine(" -d [The maximum recursive depth to enumerate for files in the input directory and its subdirectories] (Optional. Default 30)");
+#endif
+            Console.WriteLine(" -nozip [The backup files should NOT be zipped. The backup files will be files (directory structure preserved) in directory path given by the \"backup destination\" param] (Optional)");
+            Console.WriteLine("(The input can be specified multiple time for a bulk operation. E.g: -i first.zip -i \"second one.zip\" -i \"my new folder\")");
         }
 
         public void Main(string[] args)
         {
-            string inputZip = null, outputDirectory = null, backupDst = null;
-            bool isZip = true;
+            var filenameComparer =
+#if NETFRAMEWORK
+                StringComparer.OrdinalIgnoreCase
+#else
+                OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal
+#endif
+                ;
+            var inputSrc = new Dictionary<string, bool>(filenameComparer); // filename + bool of "Is Directory Or File" (false for file, true for directory)
+            string outputDirectory = null, backupDst = null;
+            bool isOutputZip = true;
+            int intputDirectoryRecursiveDepth = 30;
 
             if (args == null || args.Length == 0)
             {
@@ -42,7 +56,15 @@ namespace ZipExtractMakeBak
                 var arg = args[i];
                 if (string.Equals(arg, "-i", StringComparison.OrdinalIgnoreCase) || string.Equals(arg, "--input", StringComparison.OrdinalIgnoreCase))
                 {
-                    inputZip = args[++i];
+                    var filename = args[++i];
+                    if (File.Exists(filename))
+                    {
+                        inputSrc.Add(filename, false);
+                    }
+                    else if (Directory.Exists(filename))
+                    {
+                        inputSrc.Add(filename, true);
+                    }
                 }
                 else if (string.Equals(arg, "-o", StringComparison.OrdinalIgnoreCase) || string.Equals(arg, "--output-directory", StringComparison.OrdinalIgnoreCase))
                 {
@@ -51,22 +73,57 @@ namespace ZipExtractMakeBak
                 else if (string.Equals(arg, "-b", StringComparison.OrdinalIgnoreCase) || string.Equals(arg, "-bak", StringComparison.OrdinalIgnoreCase) || string.Equals(arg, "--backup", StringComparison.OrdinalIgnoreCase))
                 {
                     backupDst = args[++i];
-                    isZip = !Directory.Exists(backupDst);
+                    isOutputZip = !Directory.Exists(backupDst);
+                }
+                else if (string.Equals(arg, "-d", StringComparison.OrdinalIgnoreCase) || string.Equals(arg, "-depth", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (int.TryParse(args[++i], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var _parsedDepth) && _parsedDepth > 0)
+                    {
+                        intputDirectoryRecursiveDepth = _parsedDepth;
+                    }
                 }
                 else if (string.Equals(arg, "-nozip", StringComparison.OrdinalIgnoreCase))
                 {
-                    isZip = false;
+                    isOutputZip = false;
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(inputZip) || string.IsNullOrWhiteSpace(outputDirectory))
+            if (inputSrc.Count == 0 || string.IsNullOrWhiteSpace(outputDirectory))
             {
                 ShowHelp();
                 return;
             }
 
-            Console.WriteLine($"Input archive file: {inputZip}");
+            var sb = new StringBuilder();
+            bool firstItemInAppendedString = true;
+            foreach (var item in inputSrc.Keys)
+            {
+                if (firstItemInAppendedString)
+                {
+                    firstItemInAppendedString = false;
+                }
+                else
+                {
+                    sb.Append(", ");
+                }
+#if NETFRAMEWORK
+                sb.Append(Path.GetFileName(item));
+#else
+                sb.Append(Path.GetFileName(item.AsSpan()));
+#endif
+            }
+
+            if (sb.Length != 0)
+            {
+                Console.WriteLine(inputSrc.Count == 1 ? "Input archive file: " : "Input archive files: ");
+                Console.WriteLine(sb.ToString());
+            }
             Console.WriteLine($"Destination directory: {outputDirectory}");
+#if NETFRAMEWORK
+            Console.WriteLine("Input Directory Enumberate Maximum Depth: Infinite (May cause app hang if directory has corrupted record or the structure is very wrong)");
+#else
+            Console.WriteLine($"Input Directory Enumberate Maximum Depth: {intputDirectoryRecursiveDepth}");
+#endif
 
             if (string.IsNullOrWhiteSpace(backupDst))
             {
@@ -87,7 +144,7 @@ namespace ZipExtractMakeBak
                 if (!string.IsNullOrWhiteSpace(backupDst))
                 {
                     backupDst = Path.GetFullPath(backupDst);
-                    if (isZip)
+                    if (isOutputZip)
                     {
                         fs_bak = File.Create(backupDst);
                         writer = new ZipBackupWriter(fs_bak, new ZipWriterOptions(CompressionType.Deflate) { DeflateCompressionLevel = SharpCompress.Compressors.Deflate.CompressionLevel.BestCompression, LeaveStreamOpen = false, ArchiveComment = "Backup" });
@@ -98,35 +155,84 @@ namespace ZipExtractMakeBak
                     }
                 }
 
-                using (var archive = OpenArchive(inputZip))
-                using (var reader = archive.ExtractAllEntries())
+                foreach (var item in inputSrc)
                 {
-                    while (reader.MoveToNextEntry())
+                    if (item.Value)
                     {
-                        if (reader.Entry.IsDirectory)
+                        // True = Is Directory
+                        var directoryName = item.Key;
+                        var directoryNameLengthWithTrailingSlash = directoryName.Length + 1;
+#if NETFRAMEWORK
+                        foreach (var src_fullFilename in Directory.EnumerateFiles(directoryName, "*",  SearchOption.AllDirectories))
+#else
+                        foreach (var src_fullFilename in Directory.EnumerateFiles(directoryName, "*", new EnumerationOptions() { IgnoreInaccessible = true, MaxRecursionDepth = intputDirectoryRecursiveDepth, RecurseSubdirectories = true, ReturnSpecialDirectories = false }))
+#endif
                         {
-                            continue;
-                        }
-                        if (cancel)
-                        {
-                            break;
-                        }
+                            if (cancel)
+                            {
+                                break;
+                            }
 
-                        var fullpath_ofFile = Path.GetFullPath(Path.Combine(outputDirectory, reader.Entry.Key));
-                        if (writer != null && File.Exists(fullpath_ofFile))
-                        {
-                            Console.WriteLine($"Backup file: {reader.Entry.Key}");
-                            writer.WriteBackup(reader.Entry.Key, fullpath_ofFile);
-                        }
-                        if (cancel)
-                        {
-                            break;
-                        }
-                        Console.WriteLine($"Extract patching file: {reader.Entry.Key}");
+                            string relativePath = src_fullFilename.Remove(0, directoryNameLengthWithTrailingSlash), 
+                                fullpath_ofFile = Path.GetFullPath(Path.Combine(outputDirectory, relativePath));
+                            if (File.Exists(fullpath_ofFile))
+                            {
+                                Console.WriteLine($"Backup file: {relativePath}");
+                                writer.WriteBackup(relativePath, fullpath_ofFile);
+                            }
+                            if (cancel)
+                            {
+                                break;
+                            }
+                            Console.WriteLine($"Copying patching file: {relativePath}");
 
-                        Directory.CreateDirectory(Path.GetDirectoryName(fullpath_ofFile));
-                        reader.WriteEntryTo(fullpath_ofFile + ".patch");
-                        extracted.Add(fullpath_ofFile, fullpath_ofFile + ".patch");
+                            Directory.CreateDirectory(Path.GetDirectoryName(fullpath_ofFile));
+                            var tmpDstFile = fullpath_ofFile + ".patch";
+                            RemoveReadOnlyFlagIfNeeded(tmpDstFile);
+#if NETFRAMEWORK
+                            File.Delete(tmpDstFile);
+                            File.Copy(fullpath_ofFile, tmpDstFile);
+#else
+                            File.Copy(src_fullFilename, tmpDstFile, true);
+#endif
+                            extracted.Add(fullpath_ofFile, tmpDstFile);
+                        }
+                    }
+                    else
+                    {
+                        // True = Is a file, so assume it's an archive
+                        var inputZip = item.Key;
+                        using (var archive = OpenArchive(inputZip))
+                        using (var reader = archive.ExtractAllEntries())
+                        {
+                            while (reader.MoveToNextEntry())
+                            {
+                                if (reader.Entry.IsDirectory)
+                                {
+                                    continue;
+                                }
+                                if (cancel)
+                                {
+                                    break;
+                                }
+
+                                var fullpath_ofFile = Path.GetFullPath(Path.Combine(outputDirectory, reader.Entry.Key));
+                                if (writer != null && File.Exists(fullpath_ofFile))
+                                {
+                                    Console.WriteLine($"Backup file: {reader.Entry.Key}");
+                                    writer.WriteBackup(reader.Entry.Key, fullpath_ofFile);
+                                }
+                                if (cancel)
+                                {
+                                    break;
+                                }
+                                Console.WriteLine($"Extract patching file: {reader.Entry.Key}");
+
+                                Directory.CreateDirectory(Path.GetDirectoryName(fullpath_ofFile));
+                                reader.WriteEntryTo(fullpath_ofFile + ".patch");
+                                extracted.Add(fullpath_ofFile, fullpath_ofFile + ".patch");
+                            }
+                        }
                     }
                 }
             }
@@ -141,11 +247,12 @@ namespace ZipExtractMakeBak
                 Console.WriteLine("Applying all patch files.");
                 foreach (var item in extracted)
                 {
+                    RemoveReadOnlyFlagIfNeeded(item.Key);
 #if NETFRAMEWORK
                     File.Delete(item.Key);
                     File.Move(item.Value, item.Key);
 #else
-                        File.Move(item.Value, item.Key, true);
+                    File.Move(item.Value, item.Key, true);
 #endif
                 }
 
@@ -161,13 +268,25 @@ namespace ZipExtractMakeBak
             else
             {
                 Console.WriteLine($"Cancelled. Delete all extracted patch files and unused backup files.");
-                if (isZip)
+                if (isOutputZip)
                 {
                     File.Delete(backupDst);
                 }
                 foreach (var item in extracted)
                 {
                     File.Delete(item.Value);
+                }
+            }
+        }
+
+        private static void RemoveReadOnlyFlagIfNeeded(string path)
+        {
+            if (File.Exists(path))
+            {
+                var attr = File.GetAttributes(path);
+                if ((attr & FileAttributes.ReadOnly) != 0)
+                {
+                    File.SetAttributes(path, attr &= ~FileAttributes.ReadOnly);
                 }
             }
         }

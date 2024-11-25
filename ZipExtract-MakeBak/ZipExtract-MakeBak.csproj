@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net7.0;net472</TargetFrameworks>
+    <TargetFrameworks>net8.0;net472</TargetFrameworks>
     <AssemblyName>ZipEB</AssemblyName>
     <RootNamespace>ZipExtractMakeBak</RootNamespace>
     <Authors>Dramiel Leayal</Authors>
@@ -10,11 +10,11 @@
     <AutoGenerateBindingRedirects>False</AutoGenerateBindingRedirects>
     <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
     <ErrorReport>none</ErrorReport>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
 	<DebugType>none</DebugType>
   </PropertyGroup>
 
-	<PropertyGroup Condition="'$(TargetFramework)'=='net7.0'">
+	<PropertyGroup Condition="'$(TargetFramework)'!='net472'">
 		<PublishAot>true</PublishAot>
 	</PropertyGroup>
 
@@ -36,10 +36,19 @@
 
 	  <None Remove="System.Numerics.Vectors.dll" />
 	  <EmbeddedResource Include="System.Numerics.Vectors.dll" />
+
+	  <None Remove="Microsoft.Bcl.AsyncInterfaces.dll" />
+	  <EmbeddedResource Include="Microsoft.Bcl.AsyncInterfaces.dll" />
+
+	  <None Remove="System.Threading.Tasks.Extensions.dll" />
+	  <EmbeddedResource Include="System.Threading.Tasks.Extensions.dll" />
+
+	  <None Remove="ZstdSharp.dll" />
+	  <EmbeddedResource Include="ZstdSharp.dll" />
   </ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="SharpCompress" Version="0.32.2" />
+		<PackageReference Include="SharpCompress" Version="0.38.0" />
 	</ItemGroup>
 
 </Project>
